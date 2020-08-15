@@ -17,8 +17,15 @@ async fn main() {
                 .build();
             let playlist_id = String::from("37i9dQZEVXbeihcByisIXZ");
             let playlists = spotify.playlist(&playlist_id, None, None).await;
-            println!("{:?}", playlists);
+            print_playlist(playlists.unwrap());
         }
         None => println!("auth failed"),
     };
+}
+
+fn print_playlist(playlist: rspotify::model::playlist::FullPlaylist)
+{
+    for i in &playlist.tracks.items {
+        println!("{}", i.track.as_ref().unwrap().name);
+    }
 }
