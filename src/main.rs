@@ -32,7 +32,23 @@ async fn do_thing(spotify: Spotify, playlist_id: &str) {
     // Also have spotify.user_playlist_tracks which could simplify things
     let playlist = spotify.playlist(playlist_id, None, None).await.unwrap();
     let expanded_playlist = get_expanded_playlist(spotify, playlist).await;
-    println!("{:?}", expanded_playlist);
+    let mut pretty = String::new();
+    for entry in expanded_playlist {
+        pretty.push_str("---------------\n");
+        let playlist_track_id = entry.playlist_track.id.unwrap();
+        for album_track in entry.album_tracks {
+            if album_track.id.unwrap() == playlist_track_id {
+                pretty.push_str("-> ");
+            } else {
+                pretty.push_str("   ");
+            }
+            pretty.push_str(&album_track.name);
+            pretty.push('\n');
+        }
+    }
+    pretty.push_str("---------------\n");
+
+    println!("{}", pretty);
 }
 
 async fn get_expanded_playlist(
