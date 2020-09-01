@@ -9,51 +9,54 @@ struct ExpandedPlaylistEntry {
     album_tracks: Vec<SimplifiedTrack>,
 }
 
-fn main() {
-    let mut spotify_oauth = SpotifyOAuth::default().build();
-    match get_token(&mut spotify_oauth) {
-        Some(token_info) => {
-            let client_credential = SpotifyClientCredentials::default()
-                .token_info(token_info)
-                .build();
+use druid::widget::prelude::*;
+use druid::widget::{Flex, Label, Padding, Scroll};
+use druid::{AppLauncher, LocalizedString, WindowDesc};
 
-            let spotify = Spotify::default()
-                .client_credentials_manager(client_credential)
-                .build();
-            let playlist_id = "37i9dQZEVXbeihcByisIXZ";
-            do_thing(spotify, playlist_id);
-        }
-        None => println!("auth failed"),
-    };
+pub fn main() {
+    let window = WindowDesc::new(build_widget).title(
+        LocalizedString::new("spotify-explorer-window-title").with_placeholder("Spotify explorer"),
+    );
+    AppLauncher::with_window(window)
+        .use_simple_logger()
+        .launch(0u32)
+        .expect("launch failed");
 }
 
-fn do_thing(spotify: Spotify, playlist_id: &str) {
-    // Also have spotify.user_playlist_tracks which could simplify things
-    let playlist = spotify.playlist(playlist_id, None, None).unwrap();
-    let expanded_playlist = get_expanded_playlist(spotify, playlist);
-    let mut pretty = String::new();
-    for entry in expanded_playlist {
-        pretty.push_str("---------------\n");
+fn build_widget() -> impl Widget<u32> {
+    let entries = get_expanded_playlist();
+    let mut col = Flex::column();
+    for entry in entries {
         let playlist_track_id = entry.playlist_track.id.unwrap();
+
         for album_track in entry.album_tracks {
+            let mut text = String::new();
             if album_track.id.unwrap() == playlist_track_id {
-                pretty.push_str("-> ");
+                text.push_str("-> ");
             } else {
-                pretty.push_str("   ");
+                text.push_str("   ");
             }
-            pretty.push_str(&album_track.name);
-            pretty.push('\n');
+            text.push_str(&album_track.name);
+            col.add_child(Padding::new(3.0, Label::new(text)));
         }
     }
-    pretty.push_str("---------------\n");
 
-    println!("{}", pretty);
+    Scroll::new(col)
 }
 
-fn get_expanded_playlist(
-    spotify: Spotify,
-    playlist: rspotify::model::playlist::FullPlaylist,
-) -> Vec<ExpandedPlaylistEntry> {
+fn get_expanded_playlist() -> Vec<ExpandedPlaylistEntry> {
+    let mut spotify_oauth = SpotifyOAuth::default().build();
+    let token_info = get_token(&mut spotify_oauth).expect("auth failed");
+    let client_credential = SpotifyClientCredentials::default()
+        .token_info(token_info)
+        .build();
+
+    let spotify = Spotify::default()
+        .client_credentials_manager(client_credential)
+        .build();
+    let playlist_id = "37i9dQZEVXbeihcByisIXZ";
+    let playlist = spotify.playlist(playlist_id, None, None).unwrap();
+
     let mut vec = Vec::new();
     for pt in playlist.tracks.items {
         let playlist_track = pt.track.unwrap();
