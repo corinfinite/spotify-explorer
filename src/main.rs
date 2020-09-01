@@ -1,7 +1,7 @@
-use rspotify::client::Spotify;
+use rspotify::blocking::client::Spotify;
+use rspotify::blocking::oauth2::{SpotifyClientCredentials, SpotifyOAuth};
+use rspotify::blocking::util::get_token;
 use rspotify::model::track::{FullTrack, SimplifiedTrack};
-use rspotify::oauth2::{SpotifyClientCredentials, SpotifyOAuth};
-use rspotify::util::get_token;
 
 #[derive(Debug)]
 struct ExpandedPlaylistEntry {
@@ -9,10 +9,9 @@ struct ExpandedPlaylistEntry {
     album_tracks: Vec<SimplifiedTrack>,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let mut spotify_oauth = SpotifyOAuth::default().build();
-    match get_token(&mut spotify_oauth).await {
+    match get_token(&mut spotify_oauth) {
         Some(token_info) => {
             let client_credential = SpotifyClientCredentials::default()
                 .token_info(token_info)
@@ -22,16 +21,16 @@ async fn main() {
                 .client_credentials_manager(client_credential)
                 .build();
             let playlist_id = "37i9dQZEVXbeihcByisIXZ";
-            do_thing(spotify, playlist_id).await;
+            do_thing(spotify, playlist_id);
         }
         None => println!("auth failed"),
     };
 }
 
-async fn do_thing(spotify: Spotify, playlist_id: &str) {
+fn do_thing(spotify: Spotify, playlist_id: &str) {
     // Also have spotify.user_playlist_tracks which could simplify things
-    let playlist = spotify.playlist(playlist_id, None, None).await.unwrap();
-    let expanded_playlist = get_expanded_playlist(spotify, playlist).await;
+    let playlist = spotify.playlist(playlist_id, None, None).unwrap();
+    let expanded_playlist = get_expanded_playlist(spotify, playlist);
     let mut pretty = String::new();
     for entry in expanded_playlist {
         pretty.push_str("---------------\n");
@@ -51,7 +50,7 @@ async fn do_thing(spotify: Spotify, playlist_id: &str) {
     println!("{}", pretty);
 }
 
-async fn get_expanded_playlist(
+fn get_expanded_playlist(
     spotify: Spotify,
     playlist: rspotify::model::playlist::FullPlaylist,
 ) -> Vec<ExpandedPlaylistEntry> {
@@ -60,7 +59,6 @@ async fn get_expanded_playlist(
         let playlist_track = pt.track.unwrap();
         let album_tracks = spotify
             .album_track(&playlist_track.album.id.as_ref().unwrap(), 30, 0)
-            .await
             .unwrap()
             .items;
 
